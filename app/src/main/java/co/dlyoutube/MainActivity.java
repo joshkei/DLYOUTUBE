@@ -1,19 +1,19 @@
 package co.dlyoutube;
 
-import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.os.Bundle;
 import android.content.Intent;
 import android.widget.EditText;
 import android.widget.Button;
-import android.widget.RelativeLayout;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.ArrayAdapter;
-import android.widget.TextView;
 import android.os.Environment;
 import android.os.AsyncTask;
 import android.view.View;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.InputStream;
@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Date;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -34,10 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private final String CONVERT_URL = "http://www.dailytools.info/tools/convertyoutube";
     private final String CONVERT_URL_PATTERN = "%s/%s?url=%s&ext=%s&quality=%s";
     private final String CONVERT_URL_PARAM = "getvideoinfo";
-    public final int FIRST_DOWNLOAD_MARGIN = 900;
-    public final int DOWNLOAD_MARGIN = 200;
-    public final int DOWNLOAD_BAR_MARGIN = 100;
-    public final int DOWNLOAD_STATUS_MARGIN = 150;
     public ArrayList<String> downloadList = new ArrayList<>();
 
     @Override
@@ -45,7 +42,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        init(isStoragePermissionGranted());
+        try {
+            init();
+        }
+        catch (Exception e) {
+            android.content.Context context = getApplicationContext();
+            int duration = Toast.LENGTH_LONG;
+            CharSequence text = "Error occured: " + e.getMessage();
+
+            Toast toast = Toast.makeText(context, text, duration);
+            toast.show();
+        }
 
 /*        if (savedInstanceState != null) {
             restoreInstanceState(savedInstanceState);
@@ -121,25 +128,34 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         catch (Exception e) {
+            android.content.Context context = getApplicationContext();
+            int duration = Toast.LENGTH_LONG;
+            CharSequence text = "Error occur: " + e.getMessage();
+
+            Toast toast = Toast.makeText(context, text, duration);
+            toast.show();
         }
     }
 
-    private void init(boolean enableDownload) {
+    private void init() {
+        boolean enableDownload = isStoragePermissionGranted();
+        setDownload(enableDownload);
+        setUrl();
+        setOption();
 
-        try {
-            Button btnDownload = (Button)findViewById(R.id.btn_download);
-            btnDownload.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    onDownloadClick(v);
-                }
-            });
-            btnDownload.setEnabled(enableDownload);
+        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
 
-            setUrl();
-            setOption();
-        }
-        catch (Exception e) {
-        }
+    private void setDownload(boolean enableDownload) {
+        isStoragePermissionGranted();
+
+        Button btnDownload = (Button)findViewById(R.id.btn_download);
+        btnDownload.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                onDownloadClick(v);
+            }
+        });
+        btnDownload.setEnabled(enableDownload);
     }
 
     private void setUrl() {
@@ -166,6 +182,7 @@ public class MainActivity extends AppCompatActivity {
 
         Spinner fileType = (Spinner)findViewById(R.id.spn_file_type);
         ArrayAdapter fileTypeAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, fileTypes);
+        fileTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         fileType.setAdapter(fileTypeAdapter);
 
         //quality
@@ -175,58 +192,28 @@ public class MainActivity extends AppCompatActivity {
 
         Spinner quality = (Spinner)findViewById(R.id.spn_quality);
         ArrayAdapter qualityAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, qualities);
+        qualityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         quality.setAdapter(qualityAdapter);
     }
 
     private void startDownload(String url, String format, String quality) {
         String requestUrl = String.format(CONVERT_URL_PATTERN, CONVERT_URL, CONVERT_URL_PARAM, url, format, quality);
 
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.ic_notify_download)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setProgress(100, 0, false);
+
         AsyncContentDownloader downloader = new AsyncContentDownloader();
+        downloader.notificationBuilder = notificationBuilder;
         downloader.execute(requestUrl);
+
+        ProgressBar pbLoad = (ProgressBar)findViewById(R.id.pb_loader);
+        pbLoad.setVisibility(View.VISIBLE);
 
         Button btnDownload = (Button)findViewById(R.id.btn_download);
         btnDownload.setEnabled(false);
-    }
-
-    private RelativeLayout addDownload(String title) {
-        ConstraintLayout clHome = (ConstraintLayout)findViewById(R.id.cl_home);
-        int count = downloadList.size();
-
-        TextView tvTitle = new TextView(this);
-        tvTitle.setText(title);
-        tvTitle.setTextSize(18);
-        tvTitle.setTag("title");
-        RelativeLayout.LayoutParams lpTitle = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        lpTitle.setMargins(0, count * DOWNLOAD_MARGIN, 0, 0);
-
-        ProgressBar pbDownload = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        pbDownload.setTag("bar");
-        RelativeLayout.LayoutParams lpBar = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        pbDownload.setMinimumHeight(80);
-        lpBar.setMargins(0, (count * DOWNLOAD_MARGIN) + DOWNLOAD_BAR_MARGIN, 0, 0);
-
-        TextView tvStatus = new TextView(this);
-        tvStatus.setTextSize(14);
-        tvStatus.setTag("status");
-        RelativeLayout.LayoutParams lpStatus = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        lpStatus.setMargins(0, (count * DOWNLOAD_MARGIN) + DOWNLOAD_STATUS_MARGIN, 0, 0);
-
-        RelativeLayout rlDownload = new RelativeLayout(this);
-        rlDownload.setPadding(80, FIRST_DOWNLOAD_MARGIN, 80, 0);
-        RelativeLayout.LayoutParams lpDownload = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-
-        rlDownload.addView(tvTitle, lpTitle);
-        rlDownload.addView(pbDownload, lpBar);
-        rlDownload.addView(tvStatus, lpStatus);
-
-        clHome.addView(rlDownload, lpDownload);
-
-        return rlDownload;
-    }
-
-    private void removeDownload(RelativeLayout rlDownload) {
-        ConstraintLayout clHome = (ConstraintLayout)findViewById(R.id.cl_home);
-        clHome.removeView(rlDownload);
     }
 
     private boolean isExternalStorageWritable(File file) {
@@ -272,8 +259,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        boolean result = (grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED);
-        init(result);
+
+        init();
     }
 
     private byte[] readFile(String path) throws IOException {
@@ -304,6 +291,7 @@ public class MainActivity extends AppCompatActivity {
         private final int TIMEOUT = 5000;
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
+        private NotificationCompat.Builder notificationBuilder;
 
         @Override
         protected String doInBackground(String... path) {
@@ -371,47 +359,53 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (!url.equals("") && !title.equals("") && !ext.equals("")) {
-                    //if (!downloadList.contains(url)) {
+                    android.content.Context context = getApplicationContext();
+                    int duration = Toast.LENGTH_LONG;
+                    CharSequence text = "";
+
+                    if (!downloadList.contains(url)) {
                         AsyncFileDownloader downloader = new AsyncFileDownloader();
+                        downloader.notificationBuilder = notificationBuilder;
                         downloader.url = url;
                         downloader.title = title;
                         downloader.ext = ext;
                         downloader.execute(url, title, ext);
+                        downloadList.add(url);
 
-                        Button btnDownload = (Button)findViewById(R.id.btn_download);
-                        btnDownload.setEnabled(true);
-                    //}
-                    //else {
-                        //already downloading
-                    //}
+                        text = "Download task added";
+
+                    }
+                    else {
+                        text = "Download task already added";
+                    }
+
+                    Toast toast = Toast.makeText(context, text, duration);
+                    toast.show();
                 }
-            }
-
-            if (content.equals("") || url.equals("") || title.equals("") || ext.equals("")) {
-
             }
         }
     }
 
-    class AsyncFileDownloader extends AsyncTask<String, Integer, Long> {
+    class AsyncFileDownloader extends AsyncTask<String, Integer, Integer> {
         private final int TIMEOUT = 5000;
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
-        private final int COMPLETED_DELAY = 2000;
+        private final int DELAY = 1000;
         private final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory() + "/" + Environment.DIRECTORY_DOWNLOADS;
         private String url;
         private String title;
         private String ext;
-        private RelativeLayout rlDownload;
-        int lenghtOfFile;
+        private NotificationCompat.Builder notificationBuilder;
+        Integer lengthOfFile;
+        int notifyId = (int)(new Date().getTime());
 
         @Override
-        protected Long doInBackground(String... param) {
-            Long fileLength = 0L;
+        protected Integer doInBackground(String... param) {
+            Integer fileLength = 0;
             int count;
             InputStream input = null;
             OutputStream output = null;
-            long total = 0;
+            int total = 0;
             byte data[] = null;
             int i = 0;
 
@@ -423,37 +417,59 @@ public class MainActivity extends AppCompatActivity {
 
             while (i < MAX_RETRY) {
                 try {
-                    URL u = new URL(url);
-                    URLConnection con = u.openConnection();
-                    con.setConnectTimeout(TIMEOUT);
-                    con.setReadTimeout(TIMEOUT);
-                    con.connect();
-                    // getting file length
-                    lenghtOfFile = con.getContentLength();
-
-                    // input stream to read file - with 8k buffer
-                    input = new BufferedInputStream(u.openStream());
                     File file = new File(path);
 
                     if (isExternalStorageWritable(file)) {
-                        file.createNewFile();
-                        // Output stream to write file
-                        output = new FileOutputStream(file, false);
+                        Boolean isAppend = false;
 
-                        data = new byte[1024];
-
-                        while ((count = input.read(data)) != -1) {
-                            total += count;
-                            // publishing the progress....
-                            // After this onProgressUpdate will be called
-                            publishProgress((int)(total * 100 / lenghtOfFile));
-
-                            // writing data to file
-                            output.write(data, 0, count);
+                        if (!file.exists()) {
+                            file.createNewFile();
+                        }
+                        else {
+                            isAppend = true;
                         }
 
-                        output.flush();
-                        fileLength = file.length();
+                        URL u = new URL(url);
+                        URLConnection con = u.openConnection();
+                        con.setConnectTimeout(TIMEOUT);
+                        con.setReadTimeout(TIMEOUT);
+
+                        if (isAppend) {
+                            con.setRequestProperty("Range", "bytes=" + (int)file.length() + "-");
+                        }
+
+                        con.connect();
+
+                        // getting file length
+                        lengthOfFile = con.getContentLength();
+
+                        if (lengthOfFile > 0) {
+
+                            // Output stream to write file
+                            output = new FileOutputStream(file, isAppend);
+
+                            // input stream to read file - with 8k buffer
+                            input = con.getInputStream();
+
+                            data = new byte[4096];
+
+                            while ((count = input.read(data)) != -1) {
+                                total += count;
+
+                                // publishing the progress....
+                                // After this onProgressUpdate will be called
+                                publishProgress((int) (total * 100 / lengthOfFile));
+
+                                // writing data to file
+                                output.write(data, 0, count);
+                                output.flush();
+                            }
+
+                            output.close();
+                            input.close();
+                        }
+
+                        fileLength = total;
                     }
 
                     break;
@@ -481,80 +497,60 @@ public class MainActivity extends AppCompatActivity {
         protected void onPreExecute() {
             super.onPreExecute();
 
-            rlDownload = addDownload(title);
-//            int count = rlDownload.getChildCount();
-//
-//            for (int i = 0; i < count; i++) {
-//                View v = rlDownload.getChildAt(i);
-//                if (v instanceof ProgressBar) {
-//                    ((ProgressBar)v).setProgress(0);
-//                }
-//                else if (v instanceof TextView) {
-//                    ((TextView)v).setText("Starting");
-//                }
-//            }
-            ProgressBar bar = (ProgressBar)rlDownload.findViewWithTag("bar");
-            bar.setProgress(0);
+            if (notificationBuilder != null) {
+                notificationBuilder.setProgress(100, 0, false);
+                notificationBuilder.setContentText(title);
+                notificationBuilder.setContentTitle("Starting");
 
-            TextView status = (TextView)rlDownload.findViewWithTag("status");
-            status.setText("Starting");
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
+                notificationManager.notify(notifyId, notificationBuilder.build());
+            }
 
-            downloadList.add(url);
+            ProgressBar pbLoad = (ProgressBar)findViewById(R.id.pb_loader);
+            pbLoad.setVisibility(View.INVISIBLE);
+
+            Button btnDownload = (Button)findViewById(R.id.btn_download);
+            btnDownload.setEnabled(true);
         }
 
         @Override
         protected void onProgressUpdate(Integer... progress) {
             super.onProgressUpdate(progress);
 
-            if (rlDownload != null) {
-//                int count = rlDownload.getChildCount();
-//
-//                for (int i = 0; i < count; i++) {
-//                    View v = rlDownload.getChildAt(i);
-//                    if (v instanceof ProgressBar) {
-//                        ((ProgressBar)v).setProgress(progress[0]);
-//                    }
-//                    else if (v instanceof TextView) {
-//                        ((TextView)v).setText(String.format("%s d%%%", "Downloading", progress[0]));
-//                    }
-//                }
-                ProgressBar bar = (ProgressBar)rlDownload.findViewWithTag("bar");
-                bar.setProgress(progress[0]);
+            if (notificationBuilder != null) {
+                notificationBuilder.setProgress(100, progress[0], false);
+                notificationBuilder.setContentTitle("Downloading " + progress[0] + "%");
 
-                TextView status = (TextView)rlDownload.findViewWithTag("status");
-                status.setText(String.format("%s %d%%", "Downloading", progress[0]));
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
+                notificationManager.notify(notifyId, notificationBuilder.build());
             }
         }
 
         @Override
-        protected void onPostExecute(Long fileLength) {
+        protected void onPostExecute(Integer fileLength) {
             super.onPostExecute(fileLength);
 
-            if (rlDownload != null) {
-                if (fileLength > 0 && fileLength == lenghtOfFile) {
-//                    int count = rlDownload.getChildCount();
-//
-//                    for (int i = 0; i < count; i++) {
-//                        View v = rlDownload.getChildAt(i);
-//                        if (v instanceof TextView) {
-//                            ((TextView)v).setText("Completed");
-//                        }
-//                    }
-                    TextView status = (TextView)rlDownload.findViewWithTag("status");
-                    status.setText("Completed");
+            if (notificationBuilder != null) {
+                if (fileLength.equals(lengthOfFile)) {
+                    notificationBuilder.setProgress(0, 0, false);
+                    notificationBuilder.setContentTitle("Completed");
+                }
+                else {
+                    notificationBuilder.setContentTitle("Error occured");
+                }
 
-                    try {
-                        Thread.sleep(COMPLETED_DELAY);
-                    }
-                    catch (Exception ex) {
-                    }
+                notificationBuilder.setOngoing(false);
 
-                    removeDownload(rlDownload);
-                    downloadList.remove(url);
-                } else {
-
+                try {
+                    Thread.sleep(DELAY);
+                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
+                    notificationManager.notify(notifyId, notificationBuilder.build());
+                }
+                catch (Exception e) {
                 }
             }
+
+            downloadList.remove(url);
         }
     }
 }

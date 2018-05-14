@@ -1,3 +1,26 @@
 <resources>
     <string name="app_name">DLYOUTUBE</string>
+    <string name="title_menu_settings">Settings</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="msg_error_occured">Error occured</string>
+    <string name="msg_error_location">Download location not writable</string>
+    <string name="msg_task_added">Download task added"</string>
+    <string name="msg_task_already_added">Download task already added"</string>
+    <string name="msg_download_starting">Starting</string>
+    <string name="msg_download_downloading">Downloading</string>
+    <string name="msg_download_completed">Completed</string>
+    <string name="convert_url">http://www.dailytools.info/tools/convertyoutube</string>
+    <string name="convert_url_pattern">%s/%s?url=%s&amp;ext=%s&amp;quality=%s</string>
+    <string name="convert_url_param">getvideoinfo</string>
+    <string-array name="file_types">
+        <item>Video</item>
+        <item>Audio</item>
+    </string-array>
+    <string name="default_file_type">Video</string>
+    <string-array name="qualities">
+        <item>Best</item>
+        <item>Worst</item>
+    </string-array>
+    <string name="default_quality">Best</string>
+    <string name="default_download_location">/storage/emulated/0/Download</string>
 </resources>

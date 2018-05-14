@@ -13,17 +13,19 @@ import android.widget.ArrayAdapter;
 import android.os.Environment;
 import android.os.AsyncTask;
 import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
+import android.support.v7.widget.Toolbar;
+import android.preference.PreferenceManager;
+import android.content.SharedPreferences;
 
 import java.io.File;
 import java.io.InputStream;
-import java.io.BufferedInputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
-import java.io.FileInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -32,10 +34,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
-    private final String CONVERT_URL = "http://www.dailytools.info/tools/convertyoutube";
-    private final String CONVERT_URL_PATTERN = "%s/%s?url=%s&ext=%s&quality=%s";
-    private final String CONVERT_URL_PARAM = "getvideoinfo";
-    public ArrayList<String> downloadList = new ArrayList<>();
+    public ArrayList<String> downloadList = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,11 +45,10 @@ public class MainActivity extends AppCompatActivity {
             init();
         }
         catch (Exception e) {
-            android.content.Context context = getApplicationContext();
             int duration = Toast.LENGTH_LONG;
-            CharSequence text = "Error occured: " + e.getMessage();
+            CharSequence text = getString(R.string.msg_error_occured) + ": " + e.getMessage();
 
-            Toast toast = Toast.makeText(context, text, duration);
+            Toast toast = Toast.makeText(getApplicationContext(), text, duration);
             toast.show();
         }
 
@@ -58,6 +56,29 @@ public class MainActivity extends AppCompatActivity {
             restoreInstanceState(savedInstanceState);
         }*/
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            default:
+                // If we got here, the user's action was not recognized.
+                // Invoke the superclass to handle it.
+                return super.onOptionsItemSelected(item);
+
+        }
+    }
+
 
 /*    @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
@@ -77,79 +98,67 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void saveInstanceState(Bundle savedInstanceState) {
-        EditText txtUrl = (EditText)findViewById(R.id.txt_url);
-        Spinner spnFileType = (Spinner)findViewById(R.id.spn_file_type);
-        Spinner spnQuality = (Spinner)findViewById(R.id.spn_quality);
-        TextView txtResult = (TextView) findViewById(R.id.txt_result);
-
-        String url = txtUrl.getText().toString();
-        String format = spnFileType.getSelectedItem().toString();
-        String quality = spnQuality.getSelectedItem().toString();
-        String result = txtResult.getText().toString();
-
-        savedInstanceState.putString("URL", url);
-        savedInstanceState.putString("FORMAT", format);
-        savedInstanceState.putString("QUALITY", quality);
-        savedInstanceState.putString("RESULT", result);
     }
 
     private void restoreInstanceState(Bundle savedInstanceState) {
-        String url = savedInstanceState.getString("URL");
-        String format = savedInstanceState.getString("FORMAT");
-        String quality = savedInstanceState.getString("QUALITY");
-        String result = savedInstanceState.getString("RESULT");
-
-        EditText txtUrl = (EditText)findViewById(R.id.txt_url);
-        Spinner spnFileType = (Spinner)findViewById(R.id.spn_file_type);
-        Spinner spnQuality = (Spinner)findViewById(R.id.spn_quality);
-        TextView txtResult = (TextView) findViewById(R.id.txt_result);
-
-        txtUrl.setText(url);
-        spnFileType.setSelection(((ArrayAdapter)spnFileType.getAdapter()).getPosition(format));
-        spnQuality.setSelection(((ArrayAdapter)spnQuality.getAdapter()).getPosition(quality));
-        txtResult.setText(result);
     }*/
 
     protected void onDownloadClick(View v) {
         try {
-            EditText txtUrl = (EditText)findViewById(R.id.txt_url);
-            Spinner spnFileType = (Spinner)findViewById(R.id.spn_file_type);
-            Spinner spnQuality = (Spinner)findViewById(R.id.spn_quality);
+            EditText txtUrl = findViewById(R.id.txt_url);
+            Spinner spnFileType = findViewById(R.id.spn_file_type);
+            Spinner spnQuality = findViewById(R.id.spn_quality);
 
             String url = txtUrl.getText().toString();
             String format = spnFileType.getSelectedItem().toString();
             String quality = spnQuality.getSelectedItem().toString();
 
-            if (!url.equals("")) {
-                format = format.substring(0, 1).toLowerCase();
-                quality = quality.substring(0, 1).toLowerCase();
+            if (isDownloadLocationWritable()) {
+                if (!url.equals("")) {
+                    format = format.substring(0, 1).toLowerCase();
+                    quality = quality.substring(0, 1).toLowerCase();
 
-                startDownload(url, format, quality);
+                    startDownload(url, format, quality);
+                }
+            }
+            else {
+                int duration = Toast.LENGTH_LONG;
+                CharSequence text = getString(R.string.msg_error_location);
+
+                Toast toast = Toast.makeText(getApplicationContext(), text, duration);
+                toast.show();
             }
         }
         catch (Exception e) {
-            android.content.Context context = getApplicationContext();
             int duration = Toast.LENGTH_LONG;
-            CharSequence text = "Error occur: " + e.getMessage();
+            CharSequence text = getString(R.string.msg_error_occured) + ": " + e.getMessage();
 
-            Toast toast = Toast.makeText(context, text, duration);
+            Toast toast = Toast.makeText(getApplicationContext(), text, duration);
             toast.show();
         }
     }
 
     private void init() {
         boolean enableDownload = isStoragePermissionGranted();
+
+        setToolbar();
         setDownload(enableDownload);
         setUrl();
         setOption();
 
+        downloadList = new ArrayList<>();
         getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+    private void setToolbar() {
+        Toolbar toolbar = findViewById(R.id.tb_toolbar);
+        setSupportActionBar(toolbar);
     }
 
     private void setDownload(boolean enableDownload) {
         isStoragePermissionGranted();
 
-        Button btnDownload = (Button)findViewById(R.id.btn_download);
+        Button btnDownload = findViewById(R.id.btn_download);
         btnDownload.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 onDownloadClick(v);
@@ -167,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
             if ("text/plain".equals(type)) {
                 String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
                 if (sharedText != null && !sharedText.equals("")) {
-                    EditText txtUrl = (EditText)findViewById(R.id.txt_url);
+                    EditText txtUrl = findViewById(R.id.txt_url);
                     txtUrl.setText(sharedText);
                 }
             }
@@ -175,29 +184,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setOption() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         //file types
-        ArrayList<String> fileTypes = new ArrayList<String>();
-        fileTypes.add("Video");
-        fileTypes.add("Audio");
-
-        Spinner fileType = (Spinner)findViewById(R.id.spn_file_type);
+        String[] fileTypes = getResources().getStringArray(R.array.file_types);
+        Spinner fileType = findViewById(R.id.spn_file_type);
         ArrayAdapter fileTypeAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, fileTypes);
         fileTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         fileType.setAdapter(fileTypeAdapter);
 
-        //quality
-        ArrayList<String> qualities = new ArrayList<String>();
-        qualities.add("Best");
-        qualities.add("Worst");
+        String defaultFileType = preferences.getString("file_types", getString(R.string.default_file_type));
+        int defaultFileTypePos = fileTypeAdapter.getPosition(defaultFileType);
 
-        Spinner quality = (Spinner)findViewById(R.id.spn_quality);
+        if (defaultFileTypePos != -1) {
+            fileType.setSelection(defaultFileTypePos);
+        }
+
+        //quality
+        String[] qualities = getResources().getStringArray(R.array.qualities);
+        Spinner quality = findViewById(R.id.spn_quality);
         ArrayAdapter qualityAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, qualities);
         qualityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         quality.setAdapter(qualityAdapter);
+
+        String defaultQuality = preferences.getString("qualities", getString(R.string.default_quality));
+        int defaultQualityPos = qualityAdapter.getPosition(defaultQuality);
+
+        if (defaultQualityPos != -1) {
+            quality.setSelection(defaultQualityPos);
+        }
     }
 
     private void startDownload(String url, String format, String quality) {
-        String requestUrl = String.format(CONVERT_URL_PATTERN, CONVERT_URL, CONVERT_URL_PARAM, url, format, quality);
+        String convertUrlPattern = getString(R.string.convert_url_pattern);
+        String convertUrl = getString(R.string.convert_url);
+        String convertUrlParam = getString(R.string.convert_url_param);
+
+        String requestUrl = String.format(convertUrlPattern, convertUrl, convertUrlParam, url, format, quality);
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_notify_download)
@@ -209,10 +231,10 @@ public class MainActivity extends AppCompatActivity {
         downloader.notificationBuilder = notificationBuilder;
         downloader.execute(requestUrl);
 
-        ProgressBar pbLoad = (ProgressBar)findViewById(R.id.pb_loader);
+        ProgressBar pbLoad = findViewById(R.id.pb_loader);
         pbLoad.setVisibility(View.VISIBLE);
 
-        Button btnDownload = (Button)findViewById(R.id.btn_download);
+        Button btnDownload = findViewById(R.id.btn_download);
         btnDownload.setEnabled(false);
     }
 
@@ -263,28 +285,11 @@ public class MainActivity extends AppCompatActivity {
         init();
     }
 
-    private byte[] readFile(String path) throws IOException {
-        byte[] bytes = null;
-        File file = new File(path);
+    private boolean isDownloadLocationWritable() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String defaultDownloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
 
-        if (file.exists()) {
-            int size = (int) file.length();
-            bytes = new byte[size];
-            BufferedInputStream buf = null;
-
-            try {
-                buf = new BufferedInputStream(new FileInputStream(file));
-                buf.read(bytes, 0, bytes.length);
-            } catch (IOException ex) {
-                throw ex;
-            } finally {
-            }
-            if (buf != null) {
-                buf.close();
-            }
-        }
-
-        return bytes;
+        return isExternalStorageWritable(new File(defaultDownloadLocation));
     }
 
     class AsyncContentDownloader extends AsyncTask<String, Integer, String> {
@@ -359,7 +364,6 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (!url.equals("") && !title.equals("") && !ext.equals("")) {
-                    android.content.Context context = getApplicationContext();
                     int duration = Toast.LENGTH_LONG;
                     CharSequence text = "";
 
@@ -372,14 +376,14 @@ public class MainActivity extends AppCompatActivity {
                         downloader.execute(url, title, ext);
                         downloadList.add(url);
 
-                        text = "Download task added";
+                        text = getString(R.string.msg_task_added);
 
                     }
                     else {
-                        text = "Download task already added";
+                        text = getString(R.string.msg_task_already_added);
                     }
 
-                    Toast toast = Toast.makeText(context, text, duration);
+                    Toast toast = Toast.makeText(getApplicationContext(), text, duration);
                     toast.show();
                 }
             }
@@ -391,7 +395,6 @@ public class MainActivity extends AppCompatActivity {
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
         private final int DELAY = 1000;
-        private final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory() + "/" + Environment.DIRECTORY_DOWNLOADS;
         private String url;
         private String title;
         private String ext;
@@ -413,7 +416,10 @@ public class MainActivity extends AppCompatActivity {
             title = param[1];
             ext = param[2];
 
-            String path = DOWNLOAD_PATH + "/" + title + "." + ext;
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            String defaultDownloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
+
+            String path = defaultDownloadLocation + "/" + title + "." + ext;
 
             while (i < MAX_RETRY) {
                 try {
@@ -500,16 +506,16 @@ public class MainActivity extends AppCompatActivity {
             if (notificationBuilder != null) {
                 notificationBuilder.setProgress(100, 0, false);
                 notificationBuilder.setContentText(title);
-                notificationBuilder.setContentTitle("Starting");
+                notificationBuilder.setContentTitle(getString(R.string.msg_download_starting));
 
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
                 notificationManager.notify(notifyId, notificationBuilder.build());
             }
 
-            ProgressBar pbLoad = (ProgressBar)findViewById(R.id.pb_loader);
+            ProgressBar pbLoad = findViewById(R.id.pb_loader);
             pbLoad.setVisibility(View.INVISIBLE);
 
-            Button btnDownload = (Button)findViewById(R.id.btn_download);
+            Button btnDownload = findViewById(R.id.btn_download);
             btnDownload.setEnabled(true);
         }
 
@@ -519,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (notificationBuilder != null) {
                 notificationBuilder.setProgress(100, progress[0], false);
-                notificationBuilder.setContentTitle("Downloading " + progress[0] + "%");
+                notificationBuilder.setContentTitle(getString(R.string.msg_download_downloading) + " " + progress[0] + "%");
 
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
                 notificationManager.notify(notifyId, notificationBuilder.build());
@@ -533,10 +539,10 @@ public class MainActivity extends AppCompatActivity {
             if (notificationBuilder != null) {
                 if (fileLength.equals(lengthOfFile)) {
                     notificationBuilder.setProgress(0, 0, false);
-                    notificationBuilder.setContentTitle("Completed");
+                    notificationBuilder.setContentTitle(getString(R.string.msg_download_completed));
                 }
                 else {
-                    notificationBuilder.setContentTitle("Error occured");
+                    notificationBuilder.setContentTitle(getString(R.string.msg_error_occured));
                 }
 
                 notificationBuilder.setOngoing(false);

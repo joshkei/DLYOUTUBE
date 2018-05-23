@@ -1,4 +1,4 @@
-package co.dlyoutube;
+package info.dailytools.dlyoutube;
 
 import android.support.v7.app.AppCompatActivity;
 import android.support.v4.app.NotificationCompat;
@@ -28,14 +28,11 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.Date;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
-    public ArrayList<String> downloadList = null;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
             toast.show();
         }
 
-/*        if (savedInstanceState != null) {
+        /*if (savedInstanceState != null) {
             restoreInstanceState(savedInstanceState);
         }*/
     }
@@ -75,12 +72,10 @@ public class MainActivity extends AppCompatActivity {
                 // If we got here, the user's action was not recognized.
                 // Invoke the superclass to handle it.
                 return super.onOptionsItemSelected(item);
-
         }
     }
 
-
-/*    @Override
+    /*@Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
         // Save UI state changes to the savedInstanceState.
@@ -115,8 +110,16 @@ public class MainActivity extends AppCompatActivity {
 
             if (isDownloadLocationWritable()) {
                 if (!url.equals("")) {
+
                     format = format.substring(0, 1).toLowerCase();
+
                     quality = quality.substring(0, 1).toLowerCase();
+                    if (quality.equals("h")) {
+                        quality = "b";
+                    }
+                    else {
+                        quality = "w";
+                    }
 
                     startDownload(url, format, quality);
                 }
@@ -146,7 +149,6 @@ public class MainActivity extends AppCompatActivity {
         setUrl();
         setOption();
 
-        downloadList = new ArrayList<>();
         getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
@@ -171,12 +173,13 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
         String action = intent.getAction();
         String type = intent.getType();
+        EditText txtUrl = findViewById(R.id.txt_url);
+        txtUrl.setText("");
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if ("text/plain".equals(type)) {
                 String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
                 if (sharedText != null && !sharedText.equals("")) {
-                    EditText txtUrl = findViewById(R.id.txt_url);
                     txtUrl.setText(sharedText);
                 }
             }
@@ -236,6 +239,8 @@ public class MainActivity extends AppCompatActivity {
 
         Button btnDownload = findViewById(R.id.btn_download);
         btnDownload.setEnabled(false);
+        btnDownload.setBackgroundColor(0xFFAAAAAA);
+        btnDownload.setTextColor(0xFFCCCCCC);
     }
 
     private boolean isExternalStorageWritable(File file) {
@@ -286,8 +291,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isDownloadLocationWritable() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String defaultDownloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String defaultDownloadLocation = preferences.getString("download_location", "");
 
         return isExternalStorageWritable(new File(defaultDownloadLocation));
     }
@@ -367,21 +372,12 @@ public class MainActivity extends AppCompatActivity {
                     int duration = Toast.LENGTH_LONG;
                     CharSequence text = "";
 
-                    if (!downloadList.contains(url)) {
-                        AsyncFileDownloader downloader = new AsyncFileDownloader();
-                        downloader.notificationBuilder = notificationBuilder;
-                        downloader.url = url;
-                        downloader.title = title;
-                        downloader.ext = ext;
-                        downloader.execute(url, title, ext);
-                        downloadList.add(url);
+                    AsyncFileDownloader downloader = new AsyncFileDownloader();
+                    downloader.notificationBuilder = notificationBuilder;
+                    downloader.title = title;
+                    downloader.execute(url, ext);
 
-                        text = getString(R.string.msg_task_added);
-
-                    }
-                    else {
-                        text = getString(R.string.msg_task_already_added);
-                    }
+                    text = getString(R.string.msg_task_added);
 
                     Toast toast = Toast.makeText(getApplicationContext(), text, duration);
                     toast.show();
@@ -395,11 +391,9 @@ public class MainActivity extends AppCompatActivity {
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
         private final int DELAY = 1000;
-        private String url;
-        private String title;
-        private String ext;
         private NotificationCompat.Builder notificationBuilder;
         Integer lengthOfFile;
+        String title;
         int notifyId = (int)(new Date().getTime());
 
         @Override
@@ -412,9 +406,8 @@ public class MainActivity extends AppCompatActivity {
             byte data[] = null;
             int i = 0;
 
-            url = param[0];
-            title = param[1];
-            ext = param[2];
+            String url = param[0];
+            String ext = param[1];
 
             SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             String defaultDownloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
@@ -517,6 +510,8 @@ public class MainActivity extends AppCompatActivity {
 
             Button btnDownload = findViewById(R.id.btn_download);
             btnDownload.setEnabled(true);
+            btnDownload.setBackgroundColor(0xFFCC0000);
+            btnDownload.setTextColor(0xFFFFFFFF);
         }
 
         @Override
@@ -555,8 +550,6 @@ public class MainActivity extends AppCompatActivity {
                 catch (Exception e) {
                 }
             }
-
-            downloadList.remove(url);
         }
     }
 }

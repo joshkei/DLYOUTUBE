@@ -3,11 +3,14 @@
     <PreferenceCategory
         android:summary="Default file type, quality and download location"
         android:title="Settings">
-        <EditTextPreference
+<!--        <EditTextPreference
             android:defaultValue="@string/default_download_location"
             android:key="download_location"
             android:selectAllOnFocus="true"
             android:singleLine="true"
+            android:title="Download Location" />-->
+        <Preference
+            android:key="download_location"
             android:title="Download Location" />
         <ListPreference
             android:defaultValue="@string/default_file_type"
@@ -25,5 +28,6 @@
             android:negativeButtonText="@null"
             android:positiveButtonText="@null"
             android:title="Quality" />
+
     </PreferenceCategory>
 </PreferenceScreen>

@@ -18,9 +18,9 @@
     </string-array>
     <string name="default_file_type">Video</string>
     <string-array name="qualities">
-        <item>Best</item>
-        <item>Worst</item>
+        <item>High</item>
+        <item>Low</item>
     </string-array>
-    <string name="default_quality">Best</string>
+    <string name="default_quality">High</string>
     <string name="default_download_location">/storage/emulated/0/Download</string>
 </resources>

@@ -7,13 +7,13 @@
         android:id="@+id/cl_home"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context="co.dlyoutube.MainActivity">
+        tools:context="info.dailytools.dlyoutube.MainActivity">
 
         <android.support.v7.widget.Toolbar
             android:id="@+id/tb_toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
+            android:background="@android:color/holo_red_dark"
             android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
             app:titleTextColor="@android:color/white"
@@ -33,20 +33,22 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-        <Button
-            android:id="@+id/btn_download"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:layout_marginRight="15dp"
-            android:defaultFocusHighlightEnabled="false"
-            android:enabled="false"
-            android:text="Download"
-            app:layout_constraintRight_toRightOf="parent"
-            android:layout_marginTop="24dp"
-            app:layout_constraintTop_toBottomOf="@+id/spn_quality">
-            <requestFocus />
-        </Button>
+    <Button
+        android:id="@+id/btn_download"
+        android:layout_width="104dp"
+        android:layout_height="wrap_content"
+        android:layout_marginRight="15dp"
+        android:layout_marginTop="24dp"
+        android:background="@android:color/holo_red_dark"
+        android:defaultFocusHighlightEnabled="false"
+        android:enabled="false"
+        android:text="Download"
+        android:textColor="@android:color/white"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/spn_quality">
+
+        <requestFocus />
+    </Button>
 
     <Spinner
         android:id="@+id/spn_file_type"
@@ -81,29 +83,27 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/lbl_quality"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="20dp"
-            android:text="Quality"
-            android:textSize="18sp"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/lbl_format" />
+    <TextView
+        android:id="@+id/lbl_quality"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginTop="20dp"
+        android:text="Quality"
+        android:textSize="18sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lbl_format" />
 
-        <TextView
-            android:id="@+id/lbl_format"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="25dp"
-            android:text="Format"
-            android:textSize="18sp"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/lbl_url" />
+    <TextView
+        android:id="@+id/lbl_format"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginTop="24dp"
+        android:text="Format"
+        android:textSize="18sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lbl_url" />
 
         <ProgressBar
             android:id="@+id/pb_loader"
@@ -116,5 +116,4 @@
             android:visibility="invisible"
             app:layout_constraintRight_toLeftOf="@+id/btn_download"
             app:layout_constraintTop_toBottomOf="@+id/spn_quality" />
-
     </android.support.constraint.ConstraintLayout>

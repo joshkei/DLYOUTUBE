@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         }
         catch (Exception e) {
             int duration = Toast.LENGTH_LONG;
-            CharSequence text = getString(R.string.msg_error_occured) + ": " + e.getMessage();
+            CharSequence text = getString(R.string.msg_error_occurred) + ": " + e.getMessage();
 
             Toast toast = Toast.makeText(getApplicationContext(), text, duration);
             toast.show();
@@ -134,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         }
         catch (Exception e) {
             int duration = Toast.LENGTH_LONG;
-            CharSequence text = getString(R.string.msg_error_occured) + ": " + e.getMessage();
+            CharSequence text = getString(R.string.msg_error_occurred) + ": " + e.getMessage();
 
             Toast toast = Toast.makeText(getApplicationContext(), text, duration);
             toast.show();
@@ -219,10 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startDownload(String url, String format, String quality) {
         String convertUrlPattern = getString(R.string.convert_url_pattern);
-        String convertUrl = getString(R.string.convert_url);
-        String convertUrlParam = getString(R.string.convert_url_param);
-
-        String requestUrl = String.format(convertUrlPattern, convertUrl, convertUrlParam, url, format, quality);
+        String requestUrl = String.format(convertUrlPattern, url, format, quality);
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_notify_download)
@@ -298,7 +295,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class AsyncContentDownloader extends AsyncTask<String, Integer, String> {
-        private final int TIMEOUT = 5000;
+        private final int CONNECT_TIMEOUT = 5000;
+        private final int READ_TIMEOUT = 15000;
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
         private NotificationCompat.Builder notificationBuilder;
@@ -313,8 +311,9 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     URL url = new URL(path[0]);
                     URLConnection con = url.openConnection();
-                    con.setConnectTimeout(TIMEOUT);
-                    con.setReadTimeout(TIMEOUT);
+                    con.setConnectTimeout(CONNECT_TIMEOUT);
+                    con.setReadTimeout(READ_TIMEOUT);
+
                     con.connect();
 
                     // open the stream and put it into BufferedReader
@@ -387,7 +386,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class AsyncFileDownloader extends AsyncTask<String, Integer, Integer> {
-        private final int TIMEOUT = 5000;
+        private final int CONNECT_TIMEOUT = 5000;
+        private final int READ_TIMEOUT = 900000;
         private final int MAX_RETRY = 10;
         private final int WAIT = 500;
         private final int DELAY = 1000;
@@ -399,11 +399,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Integer doInBackground(String... param) {
             Integer fileLength = 0;
-            int count;
             InputStream input = null;
             OutputStream output = null;
-            int total = 0;
-            byte data[] = null;
             int i = 0;
 
             String url = param[0];
@@ -420,37 +417,35 @@ public class MainActivity extends AppCompatActivity {
 
                     if (isExternalStorageWritable(file)) {
                         Boolean isAppend = false;
+                        int total = 0;
+
+                        URL u = new URL(url);
+                        URLConnection con = u.openConnection();
+                        con.setConnectTimeout(CONNECT_TIMEOUT);
+                        con.setReadTimeout(READ_TIMEOUT);
+                        con.connect();
 
                         if (!file.exists()) {
                             file.createNewFile();
                         }
                         else {
+                            total = (int)file.length();
+                            con.setRequestProperty("Range", "bytes=" + total + "-");
                             isAppend = true;
                         }
-
-                        URL u = new URL(url);
-                        URLConnection con = u.openConnection();
-                        con.setConnectTimeout(TIMEOUT);
-                        con.setReadTimeout(TIMEOUT);
-
-                        if (isAppend) {
-                            con.setRequestProperty("Range", "bytes=" + (int)file.length() + "-");
-                        }
-
-                        con.connect();
 
                         // getting file length
                         lengthOfFile = con.getContentLength();
 
                         if (lengthOfFile > 0) {
-
                             // Output stream to write file
                             output = new FileOutputStream(file, isAppend);
 
                             // input stream to read file - with 8k buffer
                             input = con.getInputStream();
 
-                            data = new byte[4096];
+                            byte[] data = new byte[4096];
+                            int count = 0;
 
                             while ((count = input.read(data)) != -1) {
                                 total += count;
@@ -462,13 +457,12 @@ public class MainActivity extends AppCompatActivity {
                                 // writing data to file
                                 output.write(data, 0, count);
                                 output.flush();
+                                fileLength = total;
                             }
 
                             output.close();
                             input.close();
                         }
-
-                        fileLength = total;
                     }
 
                     break;
@@ -537,7 +531,7 @@ public class MainActivity extends AppCompatActivity {
                     notificationBuilder.setContentTitle(getString(R.string.msg_download_completed));
                 }
                 else {
-                    notificationBuilder.setContentTitle(getString(R.string.msg_error_occured));
+                    notificationBuilder.setContentTitle(getString(R.string.msg_error_occurred));
                 }
 
                 notificationBuilder.setOngoing(false);

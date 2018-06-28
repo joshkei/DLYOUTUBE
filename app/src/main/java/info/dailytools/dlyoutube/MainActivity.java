@@ -1,8 +1,6 @@
 package info.dailytools.dlyoutube;
 
 import android.support.v7.app.AppCompatActivity;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.os.Bundle;
 import android.content.Intent;
 import android.widget.EditText;
@@ -18,21 +16,24 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import android.support.v7.widget.Toolbar;
 import android.preference.PreferenceManager;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.app.DownloadManager;
 
 import java.io.File;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Date;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,16 +43,32 @@ public class MainActivity extends AppCompatActivity {
             init();
         }
         catch (Exception e) {
-            int duration = Toast.LENGTH_LONG;
-            CharSequence text = getString(R.string.msg_error_occurred) + ": " + e.getMessage();
-
-            Toast toast = Toast.makeText(getApplicationContext(), text, duration);
-            toast.show();
+             Toast.makeText(getApplicationContext(), getString(R.string.msg_error_occurred) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
 
         /*if (savedInstanceState != null) {
             restoreInstanceState(savedInstanceState);
         }*/
+    }
+
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+
+        try {
+            setUrl();
+        }
+        catch (Exception e) {
+             Toast.makeText(getApplicationContext(), getString(R.string.msg_error_occurred) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // getIntent() should always return the most recent
+        setIntent(intent);
     }
 
     @Override
@@ -74,6 +91,12 @@ public class MainActivity extends AppCompatActivity {
                 return super.onOptionsItemSelected(item);
         }
     }
+
+/*    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(onComplete);
+    }*/
 
     /*@Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
@@ -98,6 +121,20 @@ public class MainActivity extends AppCompatActivity {
     private void restoreInstanceState(Bundle savedInstanceState) {
     }*/
 
+/*
+    BroadcastReceiver onComplete = new BroadcastReceiver() {
+        public void onReceive(Context ctxt, Intent intent) {
+            */
+/*long  refId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+            DownloadManager downloadManager = (DownloadManager)getSystemService(getApplicationContext().DOWNLOAD_SERVICE);
+            downloadManager.remove(refId);*//*
+
+
+            Toast.makeText(getApplicationContext(), getText(R.string.msg_download_completed), Toast.LENGTH_LONG).show();
+        }
+    };
+*/
+
     protected void onDownloadClick(View v) {
         try {
             EditText txtUrl = findViewById(R.id.txt_url);
@@ -108,36 +145,46 @@ public class MainActivity extends AppCompatActivity {
             String format = spnFileType.getSelectedItem().toString();
             String quality = spnQuality.getSelectedItem().toString();
 
-            if (isDownloadLocationWritable()) {
-                if (!url.equals("")) {
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+            String downloadLocation = preferences.getString("download_location", "");
+            Boolean wifiOnly = preferences.getBoolean("wifi_only", true);
 
-                    format = format.substring(0, 1).toLowerCase();
+            if (isLocationWritable(downloadLocation)) {
+                if (isNetworkAvailable(wifiOnly)) {
+                    if (!url.equals("")) {
 
-                    quality = quality.substring(0, 1).toLowerCase();
-                    if (quality.equals("h")) {
-                        quality = "b";
+                        format = format.substring(0, 1).toLowerCase();
+
+                        quality = quality.substring(0, 1).toLowerCase();
+                        if (quality.equals("h")) {
+                            quality = "b";
+                        } else {
+                            quality = "w";
+                        }
+
+                        startDownload(url, format, quality);
                     }
-                    else {
-                        quality = "w";
-                    }
-
-                    startDownload(url, format, quality);
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), getString(R.string.msg_no_wifi), Toast.LENGTH_LONG).show();
                 }
             }
             else {
-                int duration = Toast.LENGTH_LONG;
-                CharSequence text = getString(R.string.msg_error_location);
-
-                Toast toast = Toast.makeText(getApplicationContext(), text, duration);
-                toast.show();
+                Toast.makeText(getApplicationContext(), getString(R.string.msg_error_location), Toast.LENGTH_LONG).show();
             }
         }
         catch (Exception e) {
-            int duration = Toast.LENGTH_LONG;
-            CharSequence text = getString(R.string.msg_error_occurred) + ": " + e.getMessage();
+            Toast.makeText(getApplicationContext(), getString(R.string.msg_error_occurred) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
 
-            Toast toast = Toast.makeText(getApplicationContext(), text, duration);
-            toast.show();
+    protected void onViewFilesClick(View v) {
+        try {
+            Intent intent = new Intent();
+            intent.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(getApplicationContext(), getString(R.string.msg_error_occurred) + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -145,11 +192,10 @@ public class MainActivity extends AppCompatActivity {
         boolean enableDownload = isStoragePermissionGranted();
 
         setToolbar();
-        setDownload(enableDownload);
-        setUrl();
+        setButton(enableDownload);
         setOption();
 
-        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        //registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
     private void setToolbar() {
@@ -157,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
     }
 
-    private void setDownload(boolean enableDownload) {
+    private void setButton(boolean enableDownload) {
         isStoragePermissionGranted();
 
         Button btnDownload = findViewById(R.id.btn_download);
@@ -167,6 +213,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         btnDownload.setEnabled(enableDownload);
+
+        Button btnViewFiles = findViewById(R.id.btn_view_files);
+        btnViewFiles.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                onViewFilesClick(v);
+            }
+        });
     }
 
     private void setUrl() {
@@ -174,7 +227,6 @@ public class MainActivity extends AppCompatActivity {
         String action = intent.getAction();
         String type = intent.getType();
         EditText txtUrl = findViewById(R.id.txt_url);
-        txtUrl.setText("");
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if ("text/plain".equals(type)) {
@@ -221,14 +273,7 @@ public class MainActivity extends AppCompatActivity {
         String convertUrlPattern = getString(R.string.convert_url_pattern);
         String requestUrl = String.format(convertUrlPattern, url, format, quality);
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.ic_notify_download)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setProgress(100, 0, false);
-
         AsyncContentDownloader downloader = new AsyncContentDownloader();
-        downloader.notificationBuilder = notificationBuilder;
         downloader.execute(requestUrl);
 
         ProgressBar pbLoad = findViewById(R.id.pb_loader);
@@ -287,24 +332,33 @@ public class MainActivity extends AppCompatActivity {
         init();
     }
 
-    private boolean isDownloadLocationWritable() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String defaultDownloadLocation = preferences.getString("download_location", "");
+    private boolean isLocationWritable(String location) {
+        return isExternalStorageWritable(new File(location));
+    }
 
-        return isExternalStorageWritable(new File(defaultDownloadLocation));
+    private boolean isNetworkAvailable(Boolean wifiOnly) {
+        return (wifiOnly && isWifiConnected()) || !wifiOnly;
+    }
+
+    private boolean isWifiConnected() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo wifi = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+        return wifi.isConnected();
     }
 
     class AsyncContentDownloader extends AsyncTask<String, Integer, String> {
-        private final int CONNECT_TIMEOUT = 5000;
-        private final int READ_TIMEOUT = 15000;
-        private final int MAX_RETRY = 10;
+        private final int CONNECT_TIMEOUT = 3000;
+        private final int READ_TIMEOUT = 10000;
+        private final int MAX_RETRY = 3;
         private final int WAIT = 500;
-        private NotificationCompat.Builder notificationBuilder;
 
         @Override
         protected String doInBackground(String... path) {
             StringBuilder response = new StringBuilder();
+            InputStream is = null;
             BufferedReader br = null;
+            InputStreamReader isr = null;
             int i = 0;
 
             while (i < MAX_RETRY) {
@@ -313,18 +367,17 @@ public class MainActivity extends AppCompatActivity {
                     URLConnection con = url.openConnection();
                     con.setConnectTimeout(CONNECT_TIMEOUT);
                     con.setReadTimeout(READ_TIMEOUT);
-
                     con.connect();
 
                     // open the stream and put it into BufferedReader
-                    br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-
+                    is = con.getInputStream();
+                    isr = new InputStreamReader(is);
+                    br = new BufferedReader(isr);
                     String inputLine;
                     while ((inputLine = br.readLine()) != null) {
                         response.append(inputLine);
                     }
 
-                    br.close();
                     break;
                 } catch (Exception e) {
                     try {
@@ -333,11 +386,9 @@ public class MainActivity extends AppCompatActivity {
                     catch (Exception ex) {}
                     i++;
                 } finally {
-                    try {
-                        br.close();
-                    }
-                    catch (Exception e) {
-                    }
+                    try {br.close();} catch(Exception e) {}
+                    try {isr.close();} catch(Exception e) {}
+                    try {is.close();} catch(Exception e) {}
                 }
             }
 
@@ -368,135 +419,18 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (!url.equals("") && !title.equals("") && !ext.equals("")) {
-                    int duration = Toast.LENGTH_LONG;
-                    CharSequence text = "";
+                    SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                    String downloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
+                    Boolean wifiOnly = preferences.getBoolean("wifi_only", true);
 
-                    AsyncFileDownloader downloader = new AsyncFileDownloader();
-                    downloader.notificationBuilder = notificationBuilder;
-                    downloader.title = title;
-                    downloader.execute(url, ext);
-
-                    text = getString(R.string.msg_task_added);
-
-                    Toast toast = Toast.makeText(getApplicationContext(), text, duration);
-                    toast.show();
+                    downloadFile(url, title, ext, downloadLocation, wifiOnly);
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), getString(R.string.msg_error_video_info), Toast.LENGTH_LONG).show();
                 }
             }
-        }
-    }
-
-    class AsyncFileDownloader extends AsyncTask<String, Integer, Integer> {
-        private final int CONNECT_TIMEOUT = 5000;
-        private final int READ_TIMEOUT = 900000;
-        private final int MAX_RETRY = 10;
-        private final int WAIT = 500;
-        private final int DELAY = 1000;
-        private NotificationCompat.Builder notificationBuilder;
-        Integer lengthOfFile;
-        String title;
-        int notifyId = (int)(new Date().getTime());
-
-        @Override
-        protected Integer doInBackground(String... param) {
-            Integer fileLength = 0;
-            InputStream input = null;
-            OutputStream output = null;
-            int i = 0;
-
-            String url = param[0];
-            String ext = param[1];
-
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            String defaultDownloadLocation = preferences.getString("download_location", getString(R.string.default_download_location));
-
-            String path = defaultDownloadLocation + "/" + title + "." + ext;
-
-            while (i < MAX_RETRY) {
-                try {
-                    File file = new File(path);
-
-                    if (isExternalStorageWritable(file)) {
-                        Boolean isAppend = false;
-                        int total = 0;
-
-                        URL u = new URL(url);
-                        URLConnection con = u.openConnection();
-                        con.setConnectTimeout(CONNECT_TIMEOUT);
-                        con.setReadTimeout(READ_TIMEOUT);
-                        con.connect();
-
-                        if (!file.exists()) {
-                            file.createNewFile();
-                        }
-                        else {
-                            total = (int)file.length();
-                            con.setRequestProperty("Range", "bytes=" + total + "-");
-                            isAppend = true;
-                        }
-
-                        // getting file length
-                        lengthOfFile = con.getContentLength();
-
-                        if (lengthOfFile > 0) {
-                            // Output stream to write file
-                            output = new FileOutputStream(file, isAppend);
-
-                            // input stream to read file - with 8k buffer
-                            input = con.getInputStream();
-
-                            byte[] data = new byte[4096];
-                            int count = 0;
-
-                            while ((count = input.read(data)) != -1) {
-                                total += count;
-
-                                // publishing the progress....
-                                // After this onProgressUpdate will be called
-                                publishProgress((int) (total * 100 / lengthOfFile));
-
-                                // writing data to file
-                                output.write(data, 0, count);
-                                output.flush();
-                                fileLength = total;
-                            }
-
-                            output.close();
-                            input.close();
-                        }
-                    }
-
-                    break;
-                } catch (Exception e) {
-                    try {
-                        Thread.sleep(WAIT);
-                    }
-                    catch (Exception ex) {
-                    }
-                    i++;
-                } finally {
-                    try {
-                        output.close();
-                        input.close();
-                    }
-                    catch (Exception e) {
-                    }
-                }
-            }
-
-            return fileLength;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-            if (notificationBuilder != null) {
-                notificationBuilder.setProgress(100, 0, false);
-                notificationBuilder.setContentText(title);
-                notificationBuilder.setContentTitle(getString(R.string.msg_download_starting));
-
-                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
-                notificationManager.notify(notifyId, notificationBuilder.build());
+            else {
+                Toast.makeText(getApplicationContext(), getString(R.string.msg_error_video_info), Toast.LENGTH_LONG).show();
             }
 
             ProgressBar pbLoad = findViewById(R.id.pb_loader);
@@ -508,41 +442,37 @@ public class MainActivity extends AppCompatActivity {
             btnDownload.setTextColor(0xFFFFFFFF);
         }
 
-        @Override
-        protected void onProgressUpdate(Integer... progress) {
-            super.onProgressUpdate(progress);
+        private void downloadFile(String url, String title, String ext, String downloadLocation, Boolean wifiOnly) {
+            String filePath = downloadLocation + "/" + title + "." + ext;
+            File file = new File(filePath);
 
-            if (notificationBuilder != null) {
-                notificationBuilder.setProgress(100, progress[0], false);
-                notificationBuilder.setContentTitle(getString(R.string.msg_download_downloading) + " " + progress[0] + "%");
-
-                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
-                notificationManager.notify(notifyId, notificationBuilder.build());
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Integer fileLength) {
-            super.onPostExecute(fileLength);
-
-            if (notificationBuilder != null) {
-                if (fileLength.equals(lengthOfFile)) {
-                    notificationBuilder.setProgress(0, 0, false);
-                    notificationBuilder.setContentTitle(getString(R.string.msg_download_completed));
-                }
-                else {
-                    notificationBuilder.setContentTitle(getString(R.string.msg_error_occurred));
+            if (isExternalStorageWritable(file)) {
+                if (file.exists()) {
+                    file.delete();
                 }
 
-                notificationBuilder.setOngoing(false);
+                Uri uri = Uri.parse(url);
+                DownloadManager.Request request = new DownloadManager.Request(uri);
+                request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);
+                request.setAllowedOverRoaming(false);
+                request.setTitle(title);
+                request.setDescription("Downloading " + title);
+                request.setVisibleInDownloadsUi(true);
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
-                try {
-                    Thread.sleep(DELAY);
-                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MainActivity.this);
-                    notificationManager.notify(notifyId, notificationBuilder.build());
+                if (!wifiOnly) {
+                    request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
                 }
-                catch (Exception e) {
-                }
+
+                filePath = filePath.replace(Environment.getExternalStorageDirectory().getAbsolutePath(), "");
+                request.setDestinationInExternalPublicDir("", filePath);
+
+                DownloadManager downloadManager = (DownloadManager) getSystemService(getApplicationContext().DOWNLOAD_SERVICE);
+                downloadManager.enqueue(request);
+
+                Toast.makeText(getApplicationContext(), getString(R.string.msg_task_added), Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getApplicationContext(), getString(R.string.msg_error_location), Toast.LENGTH_LONG).show();
             }
         }
     }

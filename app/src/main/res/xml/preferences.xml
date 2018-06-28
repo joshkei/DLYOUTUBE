@@ -3,15 +3,14 @@
     <PreferenceCategory
         android:summary="Default file type, quality and download location"
         android:title="Settings">
-<!--        <EditTextPreference
-            android:defaultValue="@string/default_download_location"
-            android:key="download_location"
-            android:selectAllOnFocus="true"
-            android:singleLine="true"
-            android:title="Download Location" />-->
         <Preference
             android:key="download_location"
             android:title="Download Location" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="wifi_only"
+            android:title="WiFi Only" />
         <ListPreference
             android:defaultValue="@string/default_file_type"
             android:entries="@array/file_types"
@@ -19,7 +18,7 @@
             android:key="file_types"
             android:negativeButtonText="@null"
             android:positiveButtonText="@null"
-            android:title="Format" />
+            android:title="Default Format" />
         <ListPreference
             android:defaultValue="@string/default_quality"
             android:entries="@array/qualities"
@@ -27,7 +26,7 @@
             android:key="qualities"
             android:negativeButtonText="@null"
             android:positiveButtonText="@null"
-            android:title="Quality" />
+            android:title="Default Quality" />
 
     </PreferenceCategory>
 </PreferenceScreen>
